@@ -1,7 +1,11 @@
-import { FileText } from "lucide-react"
-
+import { PlusIcon } from "lucide-react"
+import { Metadata } from "next"
 import { SignupForm } from "@/components/auth/signup-form"
 import Link from "next/link"
+
+export const metadata: Metadata = {
+  title: "A+ Quiz | Signup",
+};
 
 export default function SignupPage() {
   return (
@@ -9,9 +13,9 @@ export default function SignupPage() {
       <div className="flex w-full max-w-sm flex-col gap-6">
         <Link href="/" className="flex items-center gap-2 self-center font-medium">
           <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
-            <FileText className="size-4" />
+            <PlusIcon className="size-8" />
           </div>
-          Quiz Let
+          A+ Quiz
         </Link>
         <SignupForm />
       </div>
