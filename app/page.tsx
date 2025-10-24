@@ -1,9 +1,9 @@
+import { Navbar } from "@/components/landing/navbar";
 
-export default function Home() {
-    // this is the main landing page
-    return (
-        <div>
-            <h1>Welcome to the A+ Quiz System</h1>
-        </div>
-    );
+export default function Page() {
+  return (
+    <main className="min-h-screen bg-background">
+      <Navbar />
+    </main>
+  );
 }
