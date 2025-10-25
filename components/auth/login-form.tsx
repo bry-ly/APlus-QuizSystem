@@ -33,13 +33,11 @@ export function LoginForm({
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  const [errorMsg, setErrorMsg] = React.useState("");
   const [rememberMe, setRememberMe] = React.useState(true);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg("");
     setLoading(true);
     try {
       await authClient.signIn.email(
@@ -52,10 +50,8 @@ export function LoginForm({
         {
           onError: (ctx: { error: { status: number; message: string } }) => {
             if (ctx.error.status === 403) {
-              setErrorMsg("Please verify your email address.");
               toast.error("Please verify your email address.");
             } else {
-              setErrorMsg(ctx.error.message || "Login failed.");
               toast.error(ctx.error.message || "Login failed.");
             }
           },
@@ -65,10 +61,8 @@ export function LoginForm({
       router.push("/");
     } catch (err: unknown) {
       if (typeof err === "object" && err && "message" in err) {
-        setErrorMsg((err as { message?: string }).message || "Login failed.");
         toast.error((err as { message?: string }).message || "Login failed.");
       } else {
-        setErrorMsg("Login failed.");
         toast.error("Login failed.");
       }
     }
@@ -141,7 +135,6 @@ export function LoginForm({
                 <Button type="submit" disabled={loading}>
                   {loading ? "Logging in..." : "Login"}
                 </Button>
-                {errorMsg && <FieldDescription className="text-red-500 text-center pt-1">{errorMsg}</FieldDescription>}
                 <FieldDescription className="text-center">
                   Don&apos;t have an account? <Link href="/signup">Sign up</Link>
                 </FieldDescription>
