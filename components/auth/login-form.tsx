@@ -20,11 +20,61 @@ import { Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import React from "react"
 
+
+import { useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
+
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const [showPassword, setShowPassword] = React.useState(false);
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [errorMsg, setErrorMsg] = React.useState("");
+  const [rememberMe, setRememberMe] = React.useState(true);
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setLoading(true);
+    try {
+      await authClient.signIn.email(
+        {
+          email,
+          password,
+          rememberMe,
+          callbackURL: window.location.origin + "/",
+        },
+        {
+          onError: (ctx: { error: { status: number; message: string } }) => {
+            if (ctx.error.status === 403) {
+              setErrorMsg("Please verify your email address.");
+              toast.error("Please verify your email address.");
+            } else {
+              setErrorMsg(ctx.error.message || "Login failed.");
+              toast.error(ctx.error.message || "Login failed.");
+            }
+          },
+        }
+      );
+      toast.success("Login successful!");
+      router.push("/");
+    } catch (err: unknown) {
+      if (typeof err === "object" && err && "message" in err) {
+        setErrorMsg((err as { message?: string }).message || "Login failed.");
+        toast.error((err as { message?: string }).message || "Login failed.");
+      } else {
+        setErrorMsg("Login failed.");
+        toast.error("Login failed.");
+      }
+    }
+    setLoading(false);
+  };
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card>
@@ -36,7 +86,7 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form>
+          <form onSubmit={handleSubmit}>
             <FieldGroup>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
@@ -45,6 +95,8 @@ export function LoginForm({
                   type="email"
                   placeholder="m@example.com"
                   required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                 />
               </Field>
               <Field>
@@ -58,7 +110,13 @@ export function LoginForm({
                   </Link>
                 </div>
                 <div className="relative">
-                  <Input id="password" type={showPassword ? "text" : "password"} required />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                  />
                   <button
                     type="button"
                     tabIndex={-1}
@@ -71,7 +129,19 @@ export function LoginForm({
                 </div>
               </Field>
               <Field>
-                <Button type="submit">Login</Button>
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={e => setRememberMe(e.target.checked)}
+                  />
+                  <label htmlFor="rememberMe" className="text-sm cursor-pointer">Remember me</label>
+                </div>
+                <Button type="submit" disabled={loading}>
+                  {loading ? "Logging in..." : "Login"}
+                </Button>
+                {errorMsg && <FieldDescription className="text-red-500 text-center pt-1">{errorMsg}</FieldDescription>}
                 <FieldDescription className="text-center">
                   Don&apos;t have an account? <Link href="/signup">Sign up</Link>
                 </FieldDescription>
@@ -85,5 +155,5 @@ export function LoginForm({
         and <a href="#">Privacy Policy</a>.
       </FieldDescription>
     </div>
-  )
+  );
 }

@@ -28,21 +28,26 @@ import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, HelpCircle } from "lucide-react";
 import Link from "next/link";
 import React from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { authClient } from "@/lib/auth-client";
 
 const COURSES = [
-  "B.S. in Criminology",
-  "B.S. in Information Technology",
-  "B.S. in Computer Science",
-  "B.S. in Electronics Engineering",
-  "B.S. in Computer Engineering",
-  "B.S. in Tourism Management",
-  "B.S. in Hospitality Management",
-  "B.S. in Bus. Ad. Major in Financial Management",
-  "B.S. in Bus. Ad. Major in Marketing Management",
-  "Bachelor of Elem. Ed.",
-  "Bachelor of Sec. Ed. Major in English",
-  "Bachelor of Sec. Ed. Major in Mathematics",
-  "Bachelor of Sec. Ed. Major in Social Studies",
+  "B.S. in Criminology - CJE",
+  "B.S. in Information Technology - ECT",
+  "B.S. in Computer Science - ECT",
+  "B.S. in Electronics Engineering - ECT",
+  "B.S. in Computer Engineering - ECT",
+  "B.S. in Tourism Management - BHT",
+  "B.S. in Hospitality Management - BHT",
+  "B.S. in Bus. Ad. Major in Financial Management - BHT",
+  "B.S. in Bus. Ad. Major in Marketing Management - BHT",
+  "Bachelor of Elem. Ed. - EDUC",
+  "Bachelor of Sec. Ed. Major in English - EDUC",
+  "Bachelor of Sec. Ed. Major in Mathematics - EDUC",
+  "Bachelor of Sec. Ed. Major in Social Studies - EDUC",
+  "Grade 11 - Senior High School",
+  "Grade 12 - Senior High School",
 ];
 
 const DEPARTMENTS = [
@@ -58,10 +63,18 @@ export function SignupForm({
 }: React.ComponentProps<"div">) {
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirm, setShowConfirm] = React.useState(false);
-  const [userType, setUserType] = React.useState("student");
+  const [userType, setUserType] = React.useState("");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [selectedOption, setSelectedOption] = React.useState("");
   const [infoDialogOpen, setInfoDialogOpen] = React.useState(false);
+  const [firstName, setFirstName] = React.useState("");
+  const [lastName, setLastName] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const router = useRouter();
+  // ...existing code...
 
   const handleUserTypeChange = (value: string) => {
     setUserType(value);
@@ -78,6 +91,102 @@ export function SignupForm({
   const dialogTitle =
     userType === "student" ? "Select Your Course" : "Select Your Department";
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+  // ...existing code...
+
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !password ||
+      !confirmPassword ||
+      !userType ||
+      !selectedOption
+    ) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters long.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Prepare the signup data based on user type
+      const signupData: {
+        firstName: string;
+        lastName: string;
+        name: string;
+        email: string;
+        password: string;
+        image: string;
+        role: string;
+        courseId?: string;
+        departmentId?: string;
+      } = {
+        firstName,
+        lastName,
+        name: `${firstName} ${lastName}`,
+        email,
+        password,
+        image:
+          "https://ui-avatars.com/api/?name=" +
+          encodeURIComponent(firstName + " " + lastName),
+        role: userType,
+      };
+      if (userType === "student") {
+        signupData.courseId = selectedOption;
+      } else if (userType === "teacher") {
+        signupData.departmentId = selectedOption;
+      }
+
+      const result = await authClient.signUp.email(signupData, {
+        onSuccess: () => {
+          toast.success("Account created successfully!");
+          // Reset form
+          setFirstName("");
+          setLastName("");
+          setEmail("");
+          setPassword("");
+          setConfirmPassword("");
+          setUserType("");
+          setSelectedOption("");
+          router.push("/login");
+        },
+        onError: (ctx) => {
+          console.error("Signup error:", ctx.error);
+          if (ctx.error.status === 403) {
+            toast.error("Please verify your email address.");
+          } else if (ctx.error.status === 400) {
+            toast.error("Email already exists or invalid data.");
+          } else {
+            toast.error(ctx.error.message || "Sign up failed.");
+          }
+        },
+      });
+
+      console.log("Signup result:", result);
+    } catch (err: unknown) {
+      console.error("Signup exception:", err);
+      if (typeof err === "object" && err && "message" in err) {
+        toast.error((err as { message?: string }).message || "Sign up failed.");
+      } else {
+        toast.error("Sign up failed. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={cn("flex flex-col gap-4", className)} {...props}>
       <Card>
@@ -88,16 +197,30 @@ export function SignupForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="pb-1">
-          <div>
+          <form onSubmit={handleSubmit}>
             <FieldGroup className="gap-3">
               <Field className="grid grid-cols-2 gap-4">
                 <Field>
                   <FieldLabel htmlFor="first-name">First Name</FieldLabel>
-                  <Input id="first-name" type="text" placeholder="" required />
+                  <Input
+                    id="first-name"
+                    type="text"
+                    placeholder="John"
+                    required
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                  />
                 </Field>
                 <Field>
                   <FieldLabel htmlFor="last-name">Last Name</FieldLabel>
-                  <Input id="last-name" type="text" placeholder="" required />
+                  <Input
+                    id="last-name"
+                    type="text"
+                    placeholder="Doe"
+                    required
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                  />
                 </Field>
               </Field>
               <Field>
@@ -107,6 +230,8 @@ export function SignupForm({
                   type="email"
                   placeholder="m@example.com"
                   required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </Field>
               <Field>
@@ -118,11 +243,13 @@ export function SignupForm({
                         id="password"
                         type={showPassword ? "text" : "password"}
                         required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                       />
                       <button
                         type="button"
                         tabIndex={-1}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         onClick={() => setShowPassword((v) => !v)}
                         aria-label={
                           showPassword ? "Hide password" : "Show password"
@@ -145,11 +272,13 @@ export function SignupForm({
                         id="confirm-password"
                         type={showConfirm ? "text" : "password"}
                         required
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
                       />
                       <button
                         type="button"
                         tabIndex={-1}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         onClick={() => setShowConfirm((v) => !v)}
                         aria-label={
                           showConfirm ? "Hide password" : "Show password"
@@ -208,15 +337,15 @@ export function SignupForm({
                 )}
               </Field>
               <Field className="pt-3">
-                <Button type="submit" className="w-full">
-                  Create Account
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Creating Account..." : "Create Account"}
                 </Button>
                 <FieldDescription className="text-center pt-1">
                   Already have an account? <Link href="/login">Sign in</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
-          </div>
+          </form>
         </CardContent>
       </Card>
       <FieldDescription className="px-6 text-center text-xs">
