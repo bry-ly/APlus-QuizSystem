@@ -1,3 +1,4 @@
+"use client";
 import type React from "react";
 import {
   Menu,
@@ -9,6 +10,9 @@ import {
   Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { useEffect, useState } from "react";
+import { authClient } from "@/lib/auth-client";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Image from "next/image";
 
@@ -69,6 +73,45 @@ const Navbar = ({
     signup: { title: "Sign up", url: "/signup" },
   },
 }: NavbarProps) => {
+  type AuthUser = {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    email: string;
+    emailVerified: boolean;
+    name: string;
+    firstName?: string;
+    lastName?: string;
+    image?: string | null;
+  };
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+  const session = await authClient.getSession();
+  if (mounted) setUser(session?.data?.user ?? null);
+      } catch {
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const handleSignOut = async () => {
+    await authClient.signOut({
+      fetchOptions: {
+        onSuccess: () => {
+          window.location.href = "/login";
+        },
+      },
+    });
+  };
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="w-full px-4 py-5">
@@ -110,7 +153,7 @@ const Navbar = ({
               ))}
             </div>
 
-            {/* Right: Test Code + Auth */}
+            {/* Right: Test Code + User/Auth */}
             <div className="flex items-center gap-4 shrink-0">
               {/* Test Code Input */}
               <div className="flex items-center gap-2 bg-muted px-3 py-2 rounded-lg border border-border">
@@ -124,13 +167,46 @@ const Navbar = ({
                 </button>
               </div>
 
-              {/* Auth Buttons */}
-              <Button asChild variant="ghost" size="sm">
-                <a href={auth.login.url}>{auth.login.title}</a>
-              </Button>
-              <Button asChild size="sm">
-                <a href={auth.signup.url}>{auth.signup.title}</a>
-              </Button>
+              {/* User Profile Dropdown or Auth Buttons */}
+              {!loading && user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-muted transition-colors">
+                      <Image
+                        src={user.image || "/placeholder.svg"}
+                        alt={user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name || "User"}
+                        width={32}
+                        height={32}
+                        className="rounded-full border"
+                      />
+                      <span className="font-medium text-sm truncate max-w-[120px]">
+                        {user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.name}
+                      </span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Profile</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <a href="/profile">View Profile</a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <a href="/settings">Settings</a>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="text-red-500">Sign out</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <>
+                  <Button asChild variant="ghost" size="sm">
+                    <a href={auth.login.url}>{auth.login.title}</a>
+                  </Button>
+                  <Button asChild size="sm">
+                    <a href={auth.signup.url}>{auth.signup.title}</a>
+                  </Button>
+                </>
+              )}
 
               {/* Help Links */}
               <div className="flex items-center gap-1 border-l border-border pl-4">
