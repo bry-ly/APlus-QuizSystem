@@ -135,13 +135,12 @@ export function SignupForm({
       } = {
         firstName,
         lastName,
-        name: `${firstName} ${lastName}`,
         email,
         password,
-        image:
-          "https://ui-avatars.com/api/?name=" +
+        image: "https://ui-avatars.com/api/?name=" +
           encodeURIComponent(firstName + " " + lastName),
         role: userType,
+        name: ""
       };
       if (userType === "student") {
         signupData.courseId = selectedOption;
@@ -205,7 +204,7 @@ export function SignupForm({
                   <Input
                     id="first-name"
                     type="text"
-                    placeholder="John"
+                    placeholder="A+"
                     required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
@@ -216,7 +215,7 @@ export function SignupForm({
                   <Input
                     id="last-name"
                     type="text"
-                    placeholder="Doe"
+                    placeholder="Quiz"
                     required
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
