@@ -51,7 +51,7 @@ const COURSES = [
 ];
 
 const DEPARTMENTS = [
-  "ECT - Engineering and Communications Technology",
+  "ECT - Electronics and Computer Technology",
   "BHT - Business, Hospitality & Tourism",
   "CJE - Criminal Justice Education",
   "EDUC - Education",
