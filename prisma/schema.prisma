@@ -18,7 +18,7 @@ model User {
   id            String    @id @map("_id")
   firstName     String
   lastName      String
-  role          role     @default(student)
+  role          role      @default(student)
   email         String
   emailVerified Boolean   @default(false)
   image         String?
@@ -28,33 +28,38 @@ model User {
   accounts      Account[]
 
   // Relations
-  courseId      String?
-  course        Course?   @relation("CourseStudents", fields: [courseId], references: [id])
-  departmentId  String?
-  department    Department? @relation("DepartmentTeachers", fields: [departmentId], references: [id])
+  courseId       String?
+  course         Course?       @relation("CourseStudents", fields: [courseId], references: [id])
+  departmentId   String?
+  department     Department?   @relation("DepartmentTeachers", fields: [departmentId], references: [id])
+  createdQuizzes Quiz[]        @relation("QuizCreator")
+  examinations   Examination[] @relation("StudentExaminations")
+
+  name String?
 
   @@unique([email])
   @@map("user")
 }
 
 model Course {
-  id          String   @id @map("_id")
-  name        String
-  code        String   @unique
-  students    User[]   @relation("CourseStudents")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+  id        String   @id @map("_id")
+  name      String
+  code      String   @unique
+  students  User[]   @relation("CourseStudents")
+  quizzes   Quiz[]   @relation("CourseQuizzes")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@map("course")
 }
 
 model Department {
-  id          String   @id @map("_id")
-  name        String
-  code        String   @unique
-  teachers    User[]   @relation("DepartmentTeachers")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now()) @updatedAt
+  id        String   @id @map("_id")
+  name      String
+  code      String   @unique
+  teachers  User[]   @relation("DepartmentTeachers")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   @@map("department")
 }
@@ -102,4 +107,78 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt
 
   @@map("verification")
+}
+
+model Quiz {
+  id           String        @id @map("_id")
+  title        String
+  description  String?
+  courseId     String
+  course       Course        @relation("CourseQuizzes", fields: [courseId], references: [id], onDelete: Cascade)
+  createdById  String
+  createdBy    User          @relation("QuizCreator", fields: [createdById], references: [id])
+  accessCode   String        @unique
+  timeLimit    Int? // in minutes
+  passingScore Int           @default(50) // percentage
+  isActive     Boolean       @default(true)
+  showResults  Boolean       @default(true)
+  bonusEnabled Boolean       @default(false) // bonus time for correct answers
+  bonusTime    Int? // bonus seconds per correct answer
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  questions    Question[]
+  examinations Examination[]
+
+  @@map("quiz")
+}
+
+model Question {
+  id            String   @id @map("_id")
+  quizId        String
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  text          String
+  type          String   @default("multiple-choice") // multiple-choice, true-false, essay
+  options       String[] // JSON array for multiple choice options
+  correctAnswer String // index or text depending on type
+  points        Int      @default(1)
+  order         Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("question")
+}
+
+model Examination {
+  id              String              @id @map("_id")
+  quizId          String
+  quiz            Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         User                @relation("StudentExaminations", fields: [studentId], references: [id], onDelete: Cascade)
+  tokenCode       String              @unique // unique token for exam access
+  startedAt       DateTime?
+  completedAt     DateTime?
+  timeSpent       Int? // in seconds
+  bonusTimeEarned Int                 @default(0) // bonus seconds earned
+  score           Float? // calculated score
+  percentage      Float? // percentage score
+  passed          Boolean?
+  answers         ExaminationAnswer[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@map("examination")
+}
+
+model ExaminationAnswer {
+  id            String      @id @map("_id")
+  examinationId String
+  examination   Examination @relation(fields: [examinationId], references: [id], onDelete: Cascade)
+  questionId    String
+  answer        String // student's answer
+  isCorrect     Boolean?
+  pointsEarned  Float       @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("examination_answer")
 }
