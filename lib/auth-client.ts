@@ -2,9 +2,19 @@ import { createAuthClient } from "better-auth/react";
 import { toast } from "sonner";
 import { organizationClient } from "better-auth/client/plugins";
 
+// Get base URL - prefer current origin in browser, fallback to env or localhost
+function getBaseURL() {
+  if (typeof window !== "undefined") {
+    // In browser, use current origin
+    return window.location.origin;
+  }
+  // Server-side, use env or localhost
+  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+}
+
 export const authClient = createAuthClient({
   plugins: [organizationClient()],
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  baseURL: getBaseURL(),
   fetchOptions: {
     onError: async (context) => {
       const { response } = context;
