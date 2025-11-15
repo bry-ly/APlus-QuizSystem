@@ -3,17 +3,21 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
+import HeroSection from "@/components/hero-section";
 
 export default function Home() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const session = await authClient.getSession();
         if (session?.data?.user) {
-          const role = (session.data.user.role as any)?.role;
+          const role = (session.data.user as any).role;
+          setIsAuthenticated(true);
+          // Redirect authenticated users to their dashboard
           if (role === "student") {
             router.push("/dashboard/student");
           } else if (role === "teacher") {
@@ -21,14 +25,13 @@ export default function Home() {
           } else if (role === "admin") {
             router.push("/dashboard/admin");
           } else {
-            // If user exists but has no role, redirect to login (or choose a sensible default)
             router.push("/login");
           }
         } else {
-          router.push("/login");
+          setIsAuthenticated(false);
         }
       } catch {
-        router.push("/login");
+        setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
@@ -36,16 +39,11 @@ export default function Home() {
     checkAuth();
   }, [router]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+  // Show landing page for unauthenticated users (no spinner)
+  if (!isAuthenticated && !loading) {
+    return <HeroSection />;
   }
 
+  // Return null while checking auth or redirecting authenticated users
   return null;
 }
