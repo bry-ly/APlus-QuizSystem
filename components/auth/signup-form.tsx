@@ -140,7 +140,7 @@ export function SignupForm({
         image: "https://ui-avatars.com/api/?name=" +
           encodeURIComponent(firstName + " " + lastName),
         role: userType,
-        name: ""
+        name: `${firstName} ${lastName}`
       };
       if (userType === "student") {
         signupData.courseId = selectedOption;

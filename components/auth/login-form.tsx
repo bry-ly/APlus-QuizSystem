@@ -39,6 +39,9 @@ export function LoginForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    let loginSuccessful = false;
+    
     try {
       await authClient.signIn.email(
         {
@@ -49,24 +52,37 @@ export function LoginForm({
         },
         {
           onError: (ctx: { error: { status: number; message: string } }) => {
+            loginSuccessful = false;
             if (ctx.error.status === 403) {
               toast.error("Please verify your email address.");
             } else {
               toast.error(ctx.error.message || "Login failed.");
             }
           },
+          onSuccess: () => {
+            loginSuccessful = true;
+            toast.success("Login successful!");
+            router.push("/");
+          },
         }
       );
-      toast.success("Login successful!");
-      router.push("/");
+      
+      // If neither callback was called, show a generic error
+      // This should rarely happen, but it's a safety net
+      if (!loginSuccessful) {
+        // Don't show error here as onError should have been called
+        // Just ensure loading state is reset
+      }
     } catch (err: unknown) {
+      loginSuccessful = false;
       if (typeof err === "object" && err && "message" in err) {
         toast.error((err as { message?: string }).message || "Login failed.");
       } else {
         toast.error("Login failed.");
       }
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
