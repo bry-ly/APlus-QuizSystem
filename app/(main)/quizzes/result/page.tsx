@@ -2,7 +2,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { Navbar } from "@/components/landing/navbar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import {
+  SidebarInset,
+  SidebarProvider,
+} from "@/components/ui/sidebar";
 import {
   Card,
   CardContent,
@@ -108,7 +113,7 @@ export default function ResultsPage() {
       try {
         const session = await authClient.getSession();
         if (session?.data?.user) {
-          if (session.data.user.role !== "student") {
+          if ((session.data.user as any).role !== "student") {
             router.push("/");
           }
           setUser(session.data.user);
@@ -143,21 +148,62 @@ export default function ResultsPage() {
 
   const COLORS = ["#10b981", "#ef4444"];
 
+  const userRole = user?.role || "student"
+  const userData = user ? {
+    name: user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+    email: user.email,
+    avatar: user.image,
+    firstName: user.firstName,
+  } : undefined
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": "calc(var(--spacing) * 72)",
+            "--header-height": "calc(var(--spacing) * 12)",
+          } as React.CSSProperties
+        }
+      >
+        <AppSidebar variant="inset" role="student" />
+        <SidebarInset>
+          <SiteHeader title="Quiz Results" />
+          <div className="flex flex-1 flex-col">
+            <div className="@container/main flex flex-1 flex-col gap-2">
+              <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+                <main className="max-w-7xl mx-auto w-full px-4">
+                  <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Loading...</p>
+                    </div>
+                  </div>
+                </main>
+              </div>
+            </div>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar variant="inset" role={userRole} user={userData} />
+      <SidebarInset>
+        <SiteHeader title="Quiz Results" />
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <main className="max-w-7xl mx-auto w-full px-4">
         {selectedResult ? (
           <>
             {/* Detail View */}
@@ -289,16 +335,14 @@ export default function ResultsPage() {
                           {answer.userAnswer}
                         </span>
                       </div>
-                      {!answer.isCorrect && (
-                        <div>
-                          <span className="text-muted-foreground">
-                            Correct answer:{" "}
-                          </span>
-                          <span className="text-green-700 dark:text-green-400">
-                            {answer.correctAnswer}
-                          </span>
-                        </div>
-                      )}
+                      <div>
+                        <span className="text-muted-foreground">
+                          Correct answer:{" "}
+                        </span>
+                        <span className="text-green-700 dark:text-green-400 font-medium">
+                          {answer.correctAnswer}
+                        </span>
+                      </div>
                       <div>
                         <span className="text-muted-foreground">Points: </span>
                         <span className="font-medium">{answer.points}</span>
@@ -486,7 +530,11 @@ export default function ResultsPage() {
             </Card>
           </>
         )}
-      </main>
-    </div>
+              </main>
+            </div>
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

@@ -2,7 +2,12 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { Navbar } from "@/components/landing/navbar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import {
+  SidebarInset,
+  SidebarProvider,
+} from "@/components/ui/sidebar";
 import {
   Card,
   CardContent,
@@ -56,7 +61,7 @@ export default function EditQuizPage() {
       try {
         const session = await authClient.getSession();
         if (session?.data?.user) {
-          if (session.data.user.role !== "teacher") {
+          if ((session.data.user as any).role !== "teacher") {
             router.push("/");
           }
           setUser(session.data.user);
@@ -134,21 +139,62 @@ export default function EditQuizPage() {
     router.push("/main/quizzes");
   };
 
+  const userRole = user?.role || "teacher"
+  const userData = user ? {
+    name: user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+    email: user.email,
+    avatar: user.image,
+    firstName: user.firstName,
+  } : undefined
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": "calc(var(--spacing) * 72)",
+            "--header-height": "calc(var(--spacing) * 12)",
+          } as React.CSSProperties
+        }
+      >
+        <AppSidebar variant="inset" role="teacher" />
+        <SidebarInset>
+          <SiteHeader title="Edit Quiz" />
+          <div className="flex flex-1 flex-col">
+            <div className="@container/main flex flex-1 flex-col gap-2">
+              <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+                <main className="max-w-4xl mx-auto w-full px-4">
+                  <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Loading...</p>
+                    </div>
+                  </div>
+                </main>
+              </div>
+            </div>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-8">
+    <SidebarProvider
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--header-height": "calc(var(--spacing) * 12)",
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar variant="inset" role={userRole} user={userData} />
+      <SidebarInset>
+        <SiteHeader title="Edit Quiz" />
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <main className="max-w-4xl mx-auto w-full px-4">
         {/* Header */}
         <div className="mb-8">
           <Link href="/main/quizzes">
@@ -370,7 +416,11 @@ export default function EditQuizPage() {
             Save Changes
           </Button>
         </div>
-      </main>
-    </div>
+              </main>
+            </div>
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

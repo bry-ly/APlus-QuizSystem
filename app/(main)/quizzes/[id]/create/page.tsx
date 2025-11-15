@@ -42,7 +42,7 @@ export default function CreateQuizPage() {
       try {
         const session = await authClient.getSession();
         if (session?.data?.user) {
-          if (session.data.user.role !== "teacher") {
+          if ((session.data.user as any).role !== "teacher") {
             router.push("/");
           }
           setUser(session.data.user);
