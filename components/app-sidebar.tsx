@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
+import * as React from "react";
+import Link from "next/link";
 import {
   LayoutDashboard,
   ListChecks,
@@ -10,16 +10,14 @@ import {
   Users,
   Settings,
   HelpCircle,
-  GraduationCap,
-  Shield,
   Trophy,
   FileText,
-} from "lucide-react"
-import type { Icon } from "lucide-react"
+} from "lucide-react";
+import type { Icon } from "lucide-react";
 
-import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
+import { NavMain } from "@/components/nav-main";
+import { NavSecondary } from "@/components/nav-secondary";
+import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -28,34 +26,39 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-import { authClient } from "@/lib/auth-client"
+} from "@/components/ui/sidebar";
+import { authClient } from "@/lib/auth-client";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  role?: "student" | "teacher" | "admin"
+  role?: "student" | "teacher" | "admin";
   user?: {
-    name: string
-    email: string
-    avatar?: string | null
-    firstName?: string | null
-  }
+    name: string;
+    email: string;
+    avatar?: string | null;
+    firstName?: string | null;
+  };
 }
 
 const getRoleBasedNav = (role: "student" | "teacher" | "admin") => {
   const baseNav = [
     {
       title: "Dashboard",
-      url: role === "student" ? "/dashboard/student" : role === "teacher" ? "/dashboard/teacher" : "/dashboard/admin",
+      url:
+        role === "student"
+          ? "/dashboard/student"
+          : role === "teacher"
+          ? "/dashboard/teacher"
+          : "/dashboard/admin",
       icon: LayoutDashboard,
     },
-  ]
+  ];
 
   if (role === "student") {
     return [
       ...baseNav,
       {
         title: "Quizzes",
-        url: "/quizzes",
+        url: "/dashboard/student",
         icon: ListChecks,
       },
       {
@@ -63,7 +66,7 @@ const getRoleBasedNav = (role: "student" | "teacher" | "admin") => {
         url: "/quizzes/result",
         icon: BarChart2,
       },
-    ]
+    ];
   }
 
   if (role === "teacher") {
@@ -84,29 +87,67 @@ const getRoleBasedNav = (role: "student" | "teacher" | "admin") => {
         url: "/analytics",
         icon: BarChart2,
       },
-    ]
+    ];
   }
 
   // Admin
   return [
     ...baseNav,
     {
-      title: "Users",
+      title: "User Management",
       url: "#",
       icon: Users,
+      items: [
+        {
+          title: "Teachers",
+          url: "/dashboard/admin/users/teachers",
+        },
+        {
+          title: "Students",
+          url: "/dashboard/admin/users/students",
+        },
+        {
+          title: "Administrators",
+          url: "/dashboard/admin/users/admins",
+        },
+      ],
     },
     {
-      title: "Courses",
+      title: "Course Management",
       url: "#",
       icon: BookOpen,
+      items: [
+        {
+          title: "Departments",
+          url: "/dashboard/admin/departments",
+        },
+        {
+          title: "Courses",
+          url: "/dashboard/admin/courses",
+        },
+      ],
     },
     {
-      title: "Analytics",
-      url: "/analytics",
-      icon: BarChart2,
+      title: "System",
+      url: "#",
+      icon: Settings,
+      items: [
+        {
+          title: "Settings",
+          url: "/dashboard/admin/settings",
+        },
+        {
+          title: "Reports",
+          url: "/dashboard/admin/reports",
+        },
+        {
+          title: "Audit Logs",
+          url: "/dashboard/admin/audit-logs",
+        },
+      ],
     },
-  ]
-}
+  ];
+};
 
 const getRoleBasedDocuments = (role: "student" | "teacher" | "admin") => {
   if (role === "student") {
@@ -121,7 +162,7 @@ const getRoleBasedDocuments = (role: "student" | "teacher" | "admin") => {
         url: "#",
         icon: FileText,
       },
-    ]
+    ];
   }
 
   if (role === "teacher") {
@@ -136,45 +177,41 @@ const getRoleBasedDocuments = (role: "student" | "teacher" | "admin") => {
         url: "/analytics",
         icon: BarChart2,
       },
-    ]
+    ];
   }
 
   // Admin
-  return [
-    {
-      name: "User Management",
-      url: "#",
-      icon: Users,
-    },
-    {
-      name: "System Reports",
-      url: "/analytics",
-      icon: BarChart2,
-    },
-  ]
-}
+  return [];
+};
 
-export function AppSidebar({ role = "student", user, ...props }: AppSidebarProps) {
-  const [currentUser, setCurrentUser] = React.useState(user)
+export function AppSidebar({
+  role = "student",
+  user,
+  ...props
+}: AppSidebarProps) {
+  const [currentUser, setCurrentUser] = React.useState(user);
 
   React.useEffect(() => {
     if (!user) {
       authClient.getSession().then((session) => {
         if (session?.data?.user) {
-          const userData = session.data.user as any
+          const userData = session.data.user as any;
           setCurrentUser({
-            name: userData.name || `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || userData.email,
+            name:
+              userData.name ||
+              `${userData.firstName || ""} ${userData.lastName || ""}`.trim() ||
+              userData.email,
             email: userData.email,
             avatar: userData.image,
             firstName: userData.firstName,
-          })
+          });
         }
-      })
+      });
     }
-  }, [user])
+  }, [user]);
 
-  const navMain = getRoleBasedNav(role)
-  const documents = getRoleBasedDocuments(role)
+  const navMain = getRoleBasedNav(role);
+  const documents = getRoleBasedDocuments(role);
   const navSecondary = [
     {
       title: "Settings",
@@ -186,11 +223,11 @@ export function AppSidebar({ role = "student", user, ...props }: AppSidebarProps
       url: "#",
       icon: HelpCircle,
     },
-  ]
+  ];
 
-  const displayName = currentUser?.name || "User"
-  const displayEmail = currentUser?.email || ""
-  const userAvatar = currentUser?.avatar || undefined
+  const displayName = currentUser?.name || "User";
+  const displayEmail = currentUser?.email || "";
+  const userAvatar = currentUser?.avatar || undefined;
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -217,11 +254,17 @@ export function AppSidebar({ role = "student", user, ...props }: AppSidebarProps
           <div className="group-data-[collapsible=icon]:hidden">
             <div className="px-2 py-2">
               <div className="text-sidebar-foreground/70 mb-2 px-2 text-xs font-semibold">
-                {role === "student" ? "My Resources" : role === "teacher" ? "Teaching Tools" : "Management"}
+                {role === "student"
+                  ? "My Resources"
+                  : role === "teacher"
+                  ? "Teaching Tools"
+                  : "Management"}
               </div>
               <div className="space-y-1">
                 {documents.map((doc) => {
-                  const Icon = doc.icon as React.ComponentType<{ className?: string }>
+                  const Icon = doc.icon as React.ComponentType<{
+                    className?: string;
+                  }>;
                   return (
                     <Link
                       key={doc.name}
@@ -231,7 +274,7 @@ export function AppSidebar({ role = "student", user, ...props }: AppSidebarProps
                       <Icon className="size-4" />
                       <span>{doc.name}</span>
                     </Link>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -249,5 +292,5 @@ export function AppSidebar({ role = "student", user, ...props }: AppSidebarProps
         />
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
