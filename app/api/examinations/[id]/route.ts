@@ -14,7 +14,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireRole(request, ["admin", "teacher", "student"]);
+  const authResult = await requireRole(request, [
+    "admin",
+    "teacher",
+    "student",
+  ]);
 
   if (authResult instanceof Response) {
     return authResult;
@@ -67,7 +71,10 @@ export async function GET(
 
     // Students can only view their own examinations
     if (user.role === "student" && examination.studentId !== user.id) {
-      return errorResponse("Forbidden - You can only view your own examinations", 403);
+      return errorResponse(
+        "Forbidden - You can only view your own examinations",
+        403
+      );
     }
 
     // Teachers can only view examinations for their quizzes
@@ -135,7 +142,7 @@ export async function PATCH(
     // If submitting answers
     if (answers && Array.isArray(answers)) {
       let bonusTimeToAdd = 0;
-      
+
       for (const answer of answers) {
         const question = examination.quiz.questions.find(
           (q) => q.id === answer.questionId
@@ -291,5 +298,54 @@ export async function PATCH(
   } catch (error: any) {
     console.error("Error updating examination:", error);
     return errorResponse(error.message || "Failed to update examination", 500);
+  }
+}
+
+/**
+ * DELETE /api/examinations/[id]
+ * Delete examination
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const authResult = await requireRole(request, [
+    "admin",
+    "teacher",
+    "student",
+  ]);
+
+  if (authResult instanceof Response) {
+    return authResult;
+  }
+
+  const { user } = authResult;
+  const { id } = await params;
+
+  try {
+    const examination = await prisma.examination.findUnique({
+      where: { id },
+    });
+
+    if (!examination) {
+      return errorResponse("Examination not found", 404);
+    }
+
+    // Students can only delete their own examinations
+    if (user.role === "student" && examination.studentId !== user.id) {
+      return errorResponse(
+        "Forbidden - You can only delete your own examinations",
+        403
+      );
+    }
+
+    await prisma.examination.delete({
+      where: { id },
+    });
+
+    return successResponse({ message: "Examination deleted successfully" });
+  } catch (error: any) {
+    console.error("Error deleting examination:", error);
+    return errorResponse(error.message || "Failed to delete examination", 500);
   }
 }

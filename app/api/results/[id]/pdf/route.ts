@@ -1,20 +1,21 @@
-import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
-import {
-  requireRole,
-  successResponse,
-  errorResponse,
-} from "@/lib/api-middleware";
-
 /**
  * GET /api/results/[id]/pdf
  * Generate PDF for examination results
  */
+import { errorResponse, requireRole } from "@/lib/api-middleware";
+import { prisma } from "@/lib/prisma";
+import { formatDate } from "@/lib/utils";
+import { NextRequest } from "next/server";
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireRole(request, ["admin", "teacher", "student"]);
+  const authResult = await requireRole(request, [
+    "admin",
+    "teacher",
+    "student",
+  ]);
 
   if (authResult instanceof Response) {
     return authResult;
@@ -62,7 +63,10 @@ export async function GET(
 
     // Students can only view their own examinations
     if (user.role === "student" && examination.studentId !== user.id) {
-      return errorResponse("Forbidden - You can only view your own examinations", 403);
+      return errorResponse(
+        "Forbidden - You can only view your own examinations",
+        403
+      );
     }
 
     // Teachers can only view examinations for their quizzes
@@ -74,14 +78,21 @@ export async function GET(
     }
 
     // Generate HTML content for PDF
-    const maxScore = examination.quiz.questions.reduce((sum, q) => sum + q.points, 0);
+    const maxScore = examination.quiz.questions.reduce(
+      (sum, q) => {
+        return sum + q.points;
+      },
+      0
+    );
     const correctCount = examination.answers.filter((a) => a.isCorrect).length;
     const studentName = `${examination.student.firstName} ${examination.student.lastName}`;
     const completedDate = examination.completedAt
-      ? new Date(examination.completedAt).toLocaleDateString()
+      ? formatDate(examination.completedAt)
       : "N/A";
     const timeSpent = examination.timeSpent
-      ? `${Math.floor(examination.timeSpent / 60)}m ${examination.timeSpent % 60}s`
+      ? `${Math.floor(examination.timeSpent / 60)}m ${
+          examination.timeSpent % 60
+        }s`
       : "N/A";
 
     const htmlContent = `
@@ -216,7 +227,9 @@ export async function GET(
       </div>
       <div class="info-item">
         <div class="info-label">Correct Answers</div>
-        <div class="info-value">${correctCount} / ${examination.quiz.questions.length}</div>
+        <div class="info-value">${correctCount} / ${
+      examination.quiz.questions.length
+    }</div>
       </div>
     </div>
   </div>
@@ -236,7 +249,9 @@ export async function GET(
     <h3>Question Review</h3>
     ${examination.quiz.questions
       .map((question, index) => {
-        const answer = examination.answers.find((a) => a.questionId === question.id);
+        const answer = examination.answers.find(
+          (a) => a.questionId === question.id
+        );
         const isCorrect = answer?.isCorrect;
         const answerText =
           question.type === "multiple-choice"
@@ -249,12 +264,18 @@ export async function GET(
 
         return `
           <div class="question-item ${isCorrect ? "correct" : "incorrect"}">
-            <div class="question-number">Question ${index + 1} ${isCorrect ? "✓" : "✗"}</div>
+            <div class="question-number">Question ${index + 1} ${
+          isCorrect ? "✓" : "✗"
+        }</div>
             <div class="question-text">${question.text}</div>
             <div class="answer-detail">
-              <div>Your answer: <span class="${isCorrect ? "correct-answer" : "wrong-answer"}">${answerText}</span></div>
+              <div>Your answer: <span class="${
+                isCorrect ? "correct-answer" : "wrong-answer"
+              }">${answerText}</span></div>
               <div>Correct answer: <span class="correct-answer">${correctAnswerText}</span></div>
-              <div>Points: ${answer?.pointsEarned || 0} / ${question.points}</div>
+              <div>Points: ${answer?.pointsEarned || 0} / ${
+          question.points
+        }</div>
             </div>
           </div>
         `;
@@ -282,5 +303,3 @@ export async function GET(
     return errorResponse(error.message || "Failed to generate PDF", 500);
   }
 }
-
-

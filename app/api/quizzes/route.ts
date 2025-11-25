@@ -4,15 +4,20 @@ import {
   requireRole,
   successResponse,
   errorResponse,
-  validateRequiredFields,
 } from "@/lib/api-middleware";
+import { quizSchema } from "@/lib/validators/quiz";
+import { generateUniqueAccessCode } from "@/lib/access-code";
 
 /**
  * GET /api/quizzes
  * Get all quizzes (filtered by role and access)
  */
 export async function GET(request: NextRequest) {
-  const authResult = await requireRole(request, ["admin", "teacher", "student"]);
+  const authResult = await requireRole(request, [
+    "admin",
+    "teacher",
+    "student",
+  ]);
 
   if (authResult instanceof Response) {
     return authResult;
@@ -71,9 +76,13 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log(`[GET /api/quizzes] Found ${quizzes.length} quizzes for user ${user.id} (${user.role})`);
+    console.log(
+      `[GET /api/quizzes] Found ${quizzes.length} quizzes for user ${user.id} (${user.role})`
+    );
     if (quizzes.length > 0) {
-      console.log(`[GET /api/quizzes] Most recent quiz: "${quizzes[0].title}" (${quizzes[0].id}) created at ${quizzes[0].createdAt}`);
+      console.log(
+        `[GET /api/quizzes] Most recent quiz: "${quizzes[0].title}" (${quizzes[0].id}) created at ${quizzes[0].createdAt}`
+      );
     }
 
     return successResponse(quizzes);
@@ -98,13 +107,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const validationError = validateRequiredFields(body, [
-      "title",
-      "courseId",
-    ]);
 
-    if (validationError) {
-      return errorResponse(validationError, 400);
+    // Validate request body using Zod schema
+    const validationResult = quizSchema.safeParse(body);
+
+    if (!validationResult.success) {
+      const errorMessage = (validationResult.error as any).errors
+        .map((e: any) => e.message)
+        .join(", ");
+      return errorResponse(errorMessage, 400);
     }
 
     const {
@@ -117,7 +128,7 @@ export async function POST(request: NextRequest) {
       bonusEnabled,
       bonusTime,
       questions,
-    } = body;
+    } = validationResult.data;
 
     // Validate course exists
     const course = await prisma.course.findUnique({
@@ -128,56 +139,19 @@ export async function POST(request: NextRequest) {
       return errorResponse("Course not found", 404);
     }
 
-    // Generate unique access code with better uniqueness
-    // Format: XXXXXX-XXXXXX (6 random chars - 6 time digits)
-    let accessCode: string = "";
-    let isUnique = false;
-    let attempts = 0;
-    const maxAttempts = 10;
+    // Generate unique access code
+    const accessCode = await generateUniqueAccessCode();
 
-    // Helper function to generate random alphanumeric string of exact length
-    const generateRandomString = (length: number): string => {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      let result = '';
-      for (let i = 0; i < length; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      return result;
-    };
-
-    // Ensure access code is unique
-    while (!isUnique && attempts < maxAttempts) {
-      // Generate exactly 6 random alphanumeric characters
-      const randomPart = generateRandomString(6);
-      
-      // Use timestamp for uniqueness
-      const timePart = (Date.now() % 1000000).toString().padStart(6, '0'); // Last 6 digits of timestamp
-      // Add a small random component to ensure uniqueness even in same millisecond
-      const extraRandom = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      const combinedTime = (timePart.slice(0, 3) + extraRandom).slice(0, 6);
-      accessCode = `${randomPart}-${combinedTime}`;
-
-      // Check if this access code already exists
-      const existing = await prisma.quiz.findUnique({
-        where: { accessCode },
-        select: { id: true },
-      });
-
-      if (!existing) {
-        isUnique = true;
-      } else {
-        attempts++;
-        console.log(`[POST /api/quizzes] Access code collision, generating new one (attempt ${attempts})`);
-        // Small delay to ensure different timestamp
-        await new Promise(resolve => setTimeout(resolve, 1));
-      }
+    if (!accessCode) {
+      return errorResponse(
+        "Failed to generate unique access code. Please try again.",
+        500
+      );
     }
 
-    if (!isUnique || !accessCode) {
-      return errorResponse("Failed to generate unique access code. Please try again.", 500);
-    }
-
-    console.log(`[POST /api/quizzes] Generated unique access code: ${accessCode}`);
+    console.log(
+      `[POST /api/quizzes] Generated unique access code: ${accessCode}`
+    );
 
     // Create quiz with questions
     const newQuiz = await prisma.quiz.create({
@@ -193,49 +167,17 @@ export async function POST(request: NextRequest) {
         showResults: showResults !== undefined ? showResults : true,
         bonusEnabled: bonusEnabled || false,
         bonusTime: bonusEnabled ? bonusTime : null,
-        questions: questions && questions.length > 0
-          ? {
-              create: questions.map((q: any, index: number) => {
-                // Validate question data
-                if (!q.text || !q.text.trim()) {
-                  throw new Error(`Question ${index + 1} must have text`);
-                }
-
-                // Ensure correctAnswer is a string
-                let correctAnswer = q.correctAnswer?.toString() || "";
-                
-                // For true/false, ensure it's "true" or "false"
-                if (q.type === "true-false") {
-                  if (correctAnswer === "0" || correctAnswer === "false") {
-                    correctAnswer = "false";
-                  } else {
-                    correctAnswer = "true";
-                  }
-                }
-
-                // For multiple-choice, ensure it's a valid index
-                if (q.type === "multiple-choice") {
-                  if (!q.options || q.options.length === 0) {
-                    throw new Error(`Question ${index + 1} must have options`);
-                  }
-                  const answerIndex = parseInt(correctAnswer);
-                  if (isNaN(answerIndex) || answerIndex < 0 || answerIndex >= q.options.length) {
-                    throw new Error(`Question ${index + 1} has invalid correct answer index`);
-                  }
-                }
-
-                return {
-                  id: crypto.randomUUID(),
-                  text: q.text.trim(),
-                  type: q.type || "multiple-choice",
-                  options: q.options || [],
-                  correctAnswer: correctAnswer,
-                  points: q.points || 1,
-                  order: index,
-                };
-              }),
-            }
-          : undefined,
+        questions: {
+          create: questions.map((q, index) => ({
+            id: crypto.randomUUID(),
+            text: q.text,
+            type: q.type,
+            options: q.options || [],
+            correctAnswer: q.correctAnswer.toString(),
+            points: q.points,
+            order: index,
+          })),
+        },
       },
       include: {
         questions: {
@@ -253,8 +195,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log(`[POST /api/quizzes] Created quiz: "${newQuiz.title}" (${newQuiz.id}) with accessCode: ${newQuiz.accessCode}`);
-    console.log(`[POST /api/quizzes] Quiz has ${newQuiz.questions.length} questions`);
+    console.log(
+      `[POST /api/quizzes] Created quiz: "${newQuiz.title}" (${newQuiz.id}) with accessCode: ${newQuiz.accessCode}`
+    );
+    console.log(
+      `[POST /api/quizzes] Quiz has ${newQuiz.questions.length} questions`
+    );
 
     return successResponse(newQuiz, 201);
   } catch (error: any) {
