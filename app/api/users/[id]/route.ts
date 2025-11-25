@@ -14,7 +14,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireRole(request, ["admin", "teacher", "student"]);
+  const authResult = await requireRole(request, [
+    "admin",
+    "teacher",
+    "student",
+  ]);
 
   if (authResult instanceof Response) {
     return authResult;
@@ -26,7 +30,10 @@ export async function GET(
   try {
     // Students can only view their own profile
     if (currentUser.role === "student" && currentUser.id !== id) {
-      return errorResponse("Forbidden - You can only view your own profile", 403);
+      return errorResponse(
+        "Forbidden - You can only view your own profile",
+        403
+      );
     }
 
     const user = await prisma.user.findUnique({
@@ -79,7 +86,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireRole(request, ["admin", "teacher", "student"]);
+  const authResult = await requireRole(request, [
+    "admin",
+    "teacher",
+    "student",
+  ]);
 
   if (authResult instanceof Response) {
     return authResult;
@@ -91,11 +102,15 @@ export async function PATCH(
   try {
     // Students can only update their own profile, and limited fields
     if (currentUser.role === "student" && currentUser.id !== id) {
-      return errorResponse("Forbidden - You can only update your own profile", 403);
+      return errorResponse(
+        "Forbidden - You can only update your own profile",
+        403
+      );
     }
 
     const body = await request.json();
-    const { firstName, lastName, email, role, courseId, departmentId, image } = body;
+    const { firstName, lastName, email, role, courseId, departmentId, image } =
+      body;
 
     // Students cannot change role, courseId, or departmentId
     if (currentUser.role === "student") {
@@ -182,6 +197,18 @@ export async function DELETE(
   const { id } = await params;
 
   try {
+    // Check if user has created any quizzes
+    const quizCount = await prisma.quiz.count({
+      where: { createdById: id },
+    });
+
+    if (quizCount > 0) {
+      return errorResponse(
+        `Cannot delete user. This user has created ${quizCount} quizzes. Please delete or reassign them first.`,
+        409
+      );
+    }
+
     await prisma.user.delete({
       where: { id },
     });
@@ -189,6 +216,13 @@ export async function DELETE(
     return successResponse({ message: "User deleted successfully" });
   } catch (error: any) {
     console.error("Error deleting user:", error);
+    // Handle Prisma relation violation error explicitly just in case
+    if (error.code === "P2014") {
+      return errorResponse(
+        "Cannot delete user due to existing related records (e.g., quizzes).",
+        409
+      );
+    }
     return errorResponse(error.message || "Failed to delete user", 500);
   }
 }
