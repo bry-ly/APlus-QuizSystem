@@ -32,10 +32,10 @@ export default function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          enableSystem
+          enableSystem={false}
           disableTransitionOnChange
         >
-          <Toaster position="top-right"  />
+          <Toaster position="top-left" richColors />
           {children}
         </ThemeProvider>
       </body>
