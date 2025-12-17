@@ -39,6 +39,12 @@ export async function generateUniqueAccessCode(
     candidates.push(accessCode);
   }
 
+  // Early return if no candidates (should not happen with maxAttempts > 0)
+  if (candidates.length === 0) {
+    console.log("[generateUniqueAccessCode] No candidates generated");
+    return null;
+  }
+
   // Check all candidates in a single database query
   const existing = await prisma.quiz.findMany({
     where: { 

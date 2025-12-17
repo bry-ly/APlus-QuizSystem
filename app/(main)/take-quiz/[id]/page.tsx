@@ -71,6 +71,9 @@ export default function TakeQuizPage() {
   
   // Debounce timer for auto-saving answers
   const saveTimerRef = useRef<Record<string, NodeJS.Timeout>>({});
+  
+  // Question map for O(1) lookups
+  const questionsMapRef = useRef<Map<string, Question>>(new Map());
 
   // Fisher-Yates shuffle algorithm
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -81,6 +84,13 @@ export default function TakeQuizPage() {
     }
     return shuffled;
   };
+  
+  // Update questions map when questions change
+  useEffect(() => {
+    if (questions.length > 0) {
+      questionsMapRef.current = new Map(questions.map(q => [q.id, q]));
+    }
+  }, [questions]);
 
   // Save answer in real-time
   const saveAnswer = useCallback(
@@ -278,7 +288,7 @@ export default function TakeQuizPage() {
     
     // For multiple choice and true/false, save immediately
     // For short answer, debounce to avoid excessive API calls
-    const question = questions.find(q => q.id === questionId);
+    const question = questionsMapRef.current.get(questionId);
     const shouldDebounce = question?.type === 'short-answer';
     
     if (shouldDebounce) {

@@ -38,7 +38,7 @@ interface QuestionCardProps {
   onAnswerChange: (value: string) => void;
 }
 
-export function QuestionCard({
+export const QuestionCard = memo(function QuestionCard({
   question,
   answer,
   answerStatus,
@@ -224,7 +224,4 @@ export function QuestionCard({
       </CardContent>
     </Card>
   );
-}
-
-// Memoize to prevent unnecessary re-renders
-export default memo(QuestionCard);
+});

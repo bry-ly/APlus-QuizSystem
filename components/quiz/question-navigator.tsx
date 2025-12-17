@@ -22,7 +22,7 @@ interface QuestionNavigatorProps {
   onNavigate: (index: number) => void;
 }
 
-export function QuestionNavigator({
+export const QuestionNavigator = memo(function QuestionNavigator({
   questions,
   currentQuestionIndex,
   answers,
@@ -112,7 +112,4 @@ export function QuestionNavigator({
       </CardContent>
     </Card>
   );
-}
-
-// Memoize to prevent unnecessary re-renders when navigating between questions
-export default memo(QuestionNavigator);
+});

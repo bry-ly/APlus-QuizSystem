@@ -205,27 +205,36 @@ export async function PATCH(
         }
       }
 
-      // Batch update and create answers in a transaction
-      await prisma.$transaction([
-        ...answersToUpdate.map((update) =>
-          prisma.examinationAnswer.update(update)
-        ),
-        ...(answersToCreate.length > 0
-          ? [prisma.examinationAnswer.createMany({ data: answersToCreate })]
-          : []),
-        ...(bonusTimeToAdd > 0
-          ? [
-              prisma.examination.update({
-                where: { id },
-                data: {
-                  bonusTimeEarned: {
-                    increment: bonusTimeToAdd,
-                  },
+      // Only proceed with transaction if there are operations to perform
+      if (answersToUpdate.length > 0 || answersToCreate.length > 0 || bonusTimeToAdd > 0) {
+        // Batch update and create answers in a transaction
+        const transactionOperations = [
+          ...answersToUpdate.map((update) =>
+            prisma.examinationAnswer.update(update)
+          ),
+        ];
+
+        if (answersToCreate.length > 0) {
+          transactionOperations.push(
+            prisma.examinationAnswer.createMany({ data: answersToCreate })
+          );
+        }
+
+        if (bonusTimeToAdd > 0) {
+          transactionOperations.push(
+            prisma.examination.update({
+              where: { id },
+              data: {
+                bonusTimeEarned: {
+                  increment: bonusTimeToAdd,
                 },
-              }),
-            ]
-          : []),
-      ]);
+              },
+            })
+          );
+        }
+
+        await prisma.$transaction(transactionOperations);
+      }
     }
 
     // If completing the examination
