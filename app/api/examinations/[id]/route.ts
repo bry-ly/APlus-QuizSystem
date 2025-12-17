@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import {
   requireRole,
   successResponse,
@@ -206,9 +207,13 @@ export async function PATCH(
       }
 
       // Only proceed with transaction if there are operations to perform
-      if (answersToUpdate.length > 0 || answersToCreate.length > 0 || bonusTimeToAdd > 0) {
+      if (
+        answersToUpdate.length > 0 ||
+        answersToCreate.length > 0 ||
+        bonusTimeToAdd > 0
+      ) {
         // Batch update and create answers in a transaction
-        const transactionOperations = [
+        const transactionOperations: Prisma.PrismaPromise<any>[] = [
           ...answersToUpdate.map((update) =>
             prisma.examinationAnswer.update(update)
           ),
