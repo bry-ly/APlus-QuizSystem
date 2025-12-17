@@ -15,46 +15,57 @@ const generateRandomString = (length: number): string => {
 /**
  * Generates a unique access code for a quiz.
  * Format: XXXXXX-XXXXXX (6 random chars - 6 time/random digits)
+ * Optimized to check uniqueness in batches to reduce database calls
  */
 export async function generateUniqueAccessCode(
   maxAttempts = 10
 ): Promise<string | null> {
-  let accessCode = "";
-  let isUnique = false;
-  let attempts = 0;
-
-  while (!isUnique && attempts < maxAttempts) {
+  // Generate multiple candidates at once to reduce database round trips
+  const candidates: string[] = [];
+  
+  for (let i = 0; i < maxAttempts; i++) {
     // Generate exactly 6 random alphanumeric characters
     const randomPart = generateRandomString(6);
 
-    // Use timestamp for uniqueness
-    const timePart = (Date.now() % 1000000).toString().padStart(6, "0"); // Last 6 digits of timestamp
-
-    // Add a small random component to ensure uniqueness even in same millisecond
+    // Use timestamp + random for uniqueness
+    const timePart = (Date.now() % 1000000).toString().padStart(6, "0");
     const extraRandom = Math.floor(Math.random() * 1000)
       .toString()
       .padStart(3, "0");
 
     const combinedTime = (timePart.slice(0, 3) + extraRandom).slice(0, 6);
-    accessCode = `${randomPart}-${combinedTime}`;
+    const accessCode = `${randomPart}-${combinedTime}`;
+    
+    candidates.push(accessCode);
+  }
 
-    // Check if this access code already exists
-    const existing = await prisma.quiz.findUnique({
-      where: { accessCode },
-      select: { id: true },
-    });
+  // Early return if no candidates (should not happen with maxAttempts > 0)
+  if (candidates.length === 0) {
+    console.log("[generateUniqueAccessCode] No candidates generated");
+    return null;
+  }
 
-    if (!existing) {
-      isUnique = true;
-    } else {
-      attempts++;
-      console.log(
-        `[generateUniqueAccessCode] Access code collision, generating new one (attempt ${attempts})`
-      );
-      // Small delay to ensure different timestamp
-      await new Promise((resolve) => setTimeout(resolve, 1));
+  // Check all candidates in a single database query
+  const existing = await prisma.quiz.findMany({
+    where: { 
+      accessCode: { 
+        in: candidates 
+      } 
+    },
+    select: { accessCode: true },
+  });
+
+  const existingCodes = new Set(existing.map(q => q.accessCode));
+  
+  // Return the first candidate that doesn't exist
+  for (const candidate of candidates) {
+    if (!existingCodes.has(candidate)) {
+      return candidate;
     }
   }
 
-  return isUnique ? accessCode : null;
+  console.log(
+    `[generateUniqueAccessCode] Failed to generate unique code after ${maxAttempts} attempts`
+  );
+  return null;
 }

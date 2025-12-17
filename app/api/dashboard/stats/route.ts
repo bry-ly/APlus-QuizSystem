@@ -16,61 +16,65 @@ export async function GET(request: NextRequest) {
   const { user } = authResult;
 
   try {
-
-    // Get total quizzes created by this teacher
-    const totalQuizzes = await prisma.quiz.count({
-      where: { createdById: user.id },
-    });
-
-    // Get courses that have quizzes created by this teacher
-    const courses = await prisma.course.findMany({
-      where: {
-        quizzes: {
-          some: {
-            createdById: user.id,
-          },
-        },
-      },
-      include: {
-        students: true,
-        quizzes: {
-          where: { createdById: user.id },
-          include: {
-            examinations: {
-              where: {
-                completedAt: { not: null },
-              },
+    // Use a single aggregated query to get all stats efficiently
+    const [totalQuizzes, coursesData, examinationsData] = await Promise.all([
+      // Get total quizzes created by this teacher
+      prisma.quiz.count({
+        where: { createdById: user.id },
+      }),
+      
+      // Get courses with student count
+      prisma.course.findMany({
+        where: {
+          quizzes: {
+            some: {
+              createdById: user.id,
             },
           },
         },
-      },
-    });
+        select: {
+          id: true,
+          _count: {
+            select: {
+              students: true,
+            },
+          },
+        },
+      }),
+      
+      // Get examinations data directly with aggregation
+      prisma.examination.findMany({
+        where: {
+          completedAt: { not: null },
+          quiz: {
+            createdById: user.id,
+          },
+        },
+        select: {
+          percentage: true,
+        },
+      }),
+    ]);
 
-    // Calculate stats
-    const totalStudents = courses.reduce(
-      (sum: number, course: any) => sum + course.students.length,
+    // Calculate stats from aggregated data
+    const totalStudents = coursesData.reduce(
+      (sum, course) => sum + course._count.students,
       0
     );
 
-    const activeClasses = courses.length;
+    const activeClasses = coursesData.length;
 
-    // Calculate average class score from all completed examinations
-    let totalScore = 0;
-    let totalExaminations = 0;
-
-    courses.forEach((course: any) => {
-      course.quizzes.forEach((quiz: any) => {
-        quiz.examinations.forEach((exam: any) => {
-          if (exam.percentage !== null) {
-            totalScore += exam.percentage;
-            totalExaminations++;
-          }
-        });
-      });
-    });
-
+    // Calculate average class score from examinations
+    const validExaminations = examinationsData.filter(
+      (exam) => exam.percentage !== null
+    );
     const averageClassScore =
-      totalExaminations > 0 ? Math.round(totalScore / totalExaminations) : 0;
+      validExaminations.length > 0
+        ? Math.round(
+            validExaminations.reduce((sum, exam) => sum + (exam.percentage || 0), 0) /
+              validExaminations.length
+          )
+        : 0;
 
     return successResponse({
       totalStudents,

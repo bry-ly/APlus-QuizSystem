@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Circle, HelpCircle, XCircle } from "lucide-react";
@@ -21,7 +22,7 @@ interface QuestionNavigatorProps {
   onNavigate: (index: number) => void;
 }
 
-export function QuestionNavigator({
+export const QuestionNavigator = memo(function QuestionNavigator({
   questions,
   currentQuestionIndex,
   answers,
@@ -111,4 +112,4 @@ export function QuestionNavigator({
       </CardContent>
     </Card>
   );
-}
+});

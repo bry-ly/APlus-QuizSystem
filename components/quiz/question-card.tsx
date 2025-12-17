@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import {
   Card,
@@ -37,7 +38,7 @@ interface QuestionCardProps {
   onAnswerChange: (value: string) => void;
 }
 
-export function QuestionCard({
+export const QuestionCard = memo(function QuestionCard({
   question,
   answer,
   answerStatus,
@@ -223,4 +224,4 @@ export function QuestionCard({
       </CardContent>
     </Card>
   );
-}
+});

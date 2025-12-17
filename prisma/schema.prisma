@@ -38,6 +38,9 @@ model User {
   name String?
 
   @@unique([email])
+  @@index([role])
+  @@index([courseId])
+  @@index([departmentId])
   @@map("user")
 }
 
@@ -129,6 +132,10 @@ model Quiz {
   questions    Question[]
   examinations Examination[]
 
+  @@index([courseId])
+  @@index([createdById])
+  @@index([isActive])
+  @@index([createdAt])
   @@map("quiz")
 }
 
@@ -145,6 +152,8 @@ model Question {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  @@index([quizId])
+  @@index([order])
   @@map("question")
 }
 
@@ -166,6 +175,10 @@ model Examination {
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
+  @@index([quizId])
+  @@index([studentId])
+  @@index([completedAt])
+  @@index([quizId, completedAt])
   @@map("examination")
 }
 
@@ -180,5 +193,8 @@ model ExaminationAnswer {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
+  @@index([examinationId])
+  @@index([questionId])
+  @@index([examinationId, questionId])
   @@map("examination_answer")
 }
