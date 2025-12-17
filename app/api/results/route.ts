@@ -55,7 +55,15 @@ export async function GET(request: NextRequest) {
 
     const results = await prisma.examination.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        quizId: true,
+        studentId: true,
+        completedAt: true,
+        score: true,
+        percentage: true,
+        passed: true,
+        timeSpent: true,
         quiz: {
           select: {
             id: true,
@@ -84,14 +92,21 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Calculate statistics
+    // Calculate statistics efficiently
+    const totalExaminations = results.length;
+    let passedCount = 0;
+    let totalPercentage = 0;
+
+    for (const result of results) {
+      if (result.passed) passedCount++;
+      totalPercentage += result.percentage || 0;
+    }
+
     const stats = {
-      totalExaminations: results.length,
-      passedExaminations: results.filter((r) => r.passed).length,
-      failedExaminations: results.filter((r) => !r.passed).length,
-      averageScore: results.length > 0
-        ? results.reduce((sum, r) => sum + (r.percentage || 0), 0) / results.length
-        : 0,
+      totalExaminations,
+      passedExaminations: passedCount,
+      failedExaminations: totalExaminations - passedCount,
+      averageScore: totalExaminations > 0 ? totalPercentage / totalExaminations : 0,
     };
 
     return successResponse({

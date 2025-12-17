@@ -141,7 +141,22 @@ export async function PATCH(
 
     // If submitting answers
     if (answers && Array.isArray(answers)) {
+      // Fetch all existing answers in one query
+      const existingAnswers = await prisma.examinationAnswer.findMany({
+        where: {
+          examinationId: id,
+          questionId: { in: answers.map((a) => a.questionId) },
+        },
+      });
+
+      // Create a map for faster lookup
+      const existingAnswersMap = new Map(
+        existingAnswers.map((ans) => [ans.questionId, ans])
+      );
+
       let bonusTimeToAdd = 0;
+      const answersToUpdate: any[] = [];
+      const answersToCreate: any[] = [];
 
       for (const answer of answers) {
         const question = examination.quiz.questions.find(
@@ -156,13 +171,8 @@ export async function PATCH(
         const isCorrect = answer.answer === question.correctAnswer;
         const pointsEarned = isCorrect ? question.points : 0;
 
-        // Find existing answer to check if this is a new correct answer
-        const existingAnswer = await prisma.examinationAnswer.findFirst({
-          where: {
-            examinationId: id,
-            questionId: answer.questionId,
-          },
-        });
+        // Get existing answer from map
+        const existingAnswer = existingAnswersMap.get(answer.questionId);
 
         // Calculate bonus time if this is a new correct answer and bonus is enabled
         if (
@@ -175,8 +185,7 @@ export async function PATCH(
         }
 
         if (existingAnswer) {
-          // Update existing answer
-          await prisma.examinationAnswer.update({
+          answersToUpdate.push({
             where: { id: existingAnswer.id },
             data: {
               answer: answer.answer,
@@ -185,31 +194,38 @@ export async function PATCH(
             },
           });
         } else {
-          // Create new answer
-          await prisma.examinationAnswer.create({
-            data: {
-              id: crypto.randomUUID(),
-              examinationId: id,
-              questionId: answer.questionId,
-              answer: answer.answer,
-              isCorrect,
-              pointsEarned,
-            },
+          answersToCreate.push({
+            id: crypto.randomUUID(),
+            examinationId: id,
+            questionId: answer.questionId,
+            answer: answer.answer,
+            isCorrect,
+            pointsEarned,
           });
         }
       }
 
-      // Update bonus time earned if any was added
-      if (bonusTimeToAdd > 0) {
-        await prisma.examination.update({
-          where: { id },
-          data: {
-            bonusTimeEarned: {
-              increment: bonusTimeToAdd,
-            },
-          },
-        });
-      }
+      // Batch update and create answers in a transaction
+      await prisma.$transaction([
+        ...answersToUpdate.map((update) =>
+          prisma.examinationAnswer.update(update)
+        ),
+        ...(answersToCreate.length > 0
+          ? [prisma.examinationAnswer.createMany({ data: answersToCreate })]
+          : []),
+        ...(bonusTimeToAdd > 0
+          ? [
+              prisma.examination.update({
+                where: { id },
+                data: {
+                  bonusTimeEarned: {
+                    increment: bonusTimeToAdd,
+                  },
+                },
+              }),
+            ]
+          : []),
+      ]);
     }
 
     // If completing the examination

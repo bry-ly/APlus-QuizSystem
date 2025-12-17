@@ -76,15 +76,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log(
-      `[GET /api/quizzes] Found ${quizzes.length} quizzes for user ${user.id} (${user.role})`
-    );
-    if (quizzes.length > 0) {
-      console.log(
-        `[GET /api/quizzes] Most recent quiz: "${quizzes[0].title}" (${quizzes[0].id}) created at ${quizzes[0].createdAt}`
-      );
-    }
-
     return successResponse(quizzes);
   } catch (error: any) {
     console.error("Error fetching quizzes:", error);
@@ -149,10 +140,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(
-      `[POST /api/quizzes] Generated unique access code: ${accessCode}`
-    );
-
     // Create quiz with questions
     const newQuiz = await prisma.quiz.create({
       data: {
@@ -194,13 +181,6 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-
-    console.log(
-      `[POST /api/quizzes] Created quiz: "${newQuiz.title}" (${newQuiz.id}) with accessCode: ${newQuiz.accessCode}`
-    );
-    console.log(
-      `[POST /api/quizzes] Quiz has ${newQuiz.questions.length} questions`
-    );
 
     return successResponse(newQuiz, 201);
   } catch (error: any) {
