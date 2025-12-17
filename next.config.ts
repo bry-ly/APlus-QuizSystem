@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  experimental:{
-    typedEnv: true,
-  },
   images: {
     domains: ['ui-avatars.com', 'ik.imagekit.io'],
     remotePatterns: [
