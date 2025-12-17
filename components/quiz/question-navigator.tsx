@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Circle, HelpCircle, XCircle } from "lucide-react";
@@ -112,3 +113,6 @@ export function QuestionNavigator({
     </Card>
   );
 }
+
+// Memoize to prevent unnecessary re-renders when navigating between questions
+export default memo(QuestionNavigator);

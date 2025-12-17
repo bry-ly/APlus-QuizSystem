@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
 import {
   Card,
@@ -224,3 +225,6 @@ export function QuestionCard({
     </Card>
   );
 }
+
+// Memoize to prevent unnecessary re-renders
+export default memo(QuestionCard);

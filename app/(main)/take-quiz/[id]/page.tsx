@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,9 @@ export default function TakeQuizPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savingAnswer, setSavingAnswer] = useState<string | null>(null);
+  
+  // Debounce timer for auto-saving answers
+  const saveTimerRef = useRef<Record<string, NodeJS.Timeout>>({});
 
   // Fisher-Yates shuffle algorithm
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -150,6 +153,13 @@ export default function TakeQuizPage() {
     },
     [examination]
   );
+  
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(saveTimerRef.current).forEach(timer => clearTimeout(timer));
+    };
+  }, []);
 
   useEffect(() => {
     const initQuiz = async () => {
@@ -258,8 +268,28 @@ export default function TakeQuizPage() {
   }, [quizId, router]);
 
   const handleAnswerChange = async (questionId: string, answer: string) => {
-    setAnswers({ ...answers, [questionId]: answer });
-    await saveAnswer(questionId, answer);
+    // Update local state immediately for responsive UI
+    setAnswers((prev) => ({ ...prev, [questionId]: answer }));
+    
+    // Clear existing timer for this question
+    if (saveTimerRef.current[questionId]) {
+      clearTimeout(saveTimerRef.current[questionId]);
+    }
+    
+    // For multiple choice and true/false, save immediately
+    // For short answer, debounce to avoid excessive API calls
+    const question = questions.find(q => q.id === questionId);
+    const shouldDebounce = question?.type === 'short-answer';
+    
+    if (shouldDebounce) {
+      // Debounce short answer saves by 1 second
+      saveTimerRef.current[questionId] = setTimeout(() => {
+        saveAnswer(questionId, answer);
+      }, 1000);
+    } else {
+      // Save immediately for multiple choice
+      await saveAnswer(questionId, answer);
+    }
   };
 
   const handleNext = () => {
